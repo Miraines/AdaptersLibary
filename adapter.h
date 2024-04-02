@@ -1,401 +1,388 @@
-#include <iterator>
-#include <type_traits>
-#include <algorithm>
+#include <iostream>
 #include <vector>
-#include <map>
+#include <unordered_map>
+#include <functional>
+#include <unordered_set>
 
-//Filter
-template<typename Iterator, typename Predicate>
-class FilterIterator {
+template<typename Derived>
+class Adapter {
  public:
-  using iterator_category = std::bidirectional_iterator_tag;
-  using value_type = typename std::iterator_traits<Iterator>::value_type;
-  using difference_type = typename std::iterator_traits<Iterator>::difference_type;
-  using pointer = typename std::iterator_traits<Iterator>::pointer;
-  using reference = typename std::iterator_traits<Iterator>::reference;
+  template<typename Container>
+  auto operator()(const Container& container) const {
 
-  FilterIterator(Iterator current, Iterator end, Predicate pred, bool is_end = false)
-      : current_(current), end_(end), pred_(pred), is_end_(is_end) {
-    if (!is_end_ && current_ != end_ && !pred_(*current_)) {
-      ++(*this);
-    }
+    return static_cast<const Derived*>(this)->apply(container);
   }
-
-  reference operator*() const { return *current_; }
-  pointer operator->() { return &(*current_); }
-  FilterIterator& operator++() {
-    do {
-      ++current_;
-    } while (current_ != end_ && !pred_(*current_));
-    return *this;
-  }
-  FilterIterator operator++(int) {
-    FilterIterator tmp = *this;
-    ++(*this);
-    return tmp;
-  }
-  FilterIterator& operator--() {
-    do {
-      --current_;
-    } while (current_ != end_ && !pred_(*current_));
-    return *this;
-  }
-  FilterIterator operator--(int) {
-    FilterIterator tmp = *this;
-    --(*this);
-    return tmp;
-  }
-  bool operator==(const FilterIterator& other) const { return current_ == other.current_; }
-  bool operator!=(const FilterIterator& other) const { return !(*this == other); }
-
- private:
-  Iterator current_, end_;
-  Predicate pred_;
-  bool is_end_;
 };
 
-//Filter
-template<typename Container, typename Predicate>
-class Filter {
+template<typename Func>
+class Transform : public Adapter<Transform<Func>> {
  public:
-  using iterator = FilterIterator<typename Container::iterator, Predicate>;
+  explicit Transform(Func func) : func(func) {}
 
-  Filter(Container& c, Predicate p) : container(c), pred(p) {}
+  template<typename Container>
+  auto apply(const Container& container) const {
+    Container result;
+    result.reserve(container.size());
+    for (const auto& elem : container) {
+      result.push_back(func(elem));
+    }
 
-  iterator begin() { return iterator(container.begin(), container.end(), pred); }
-  iterator end() { return iterator(container.end(), container.end(), pred, true); }
-  size_t size() {
+    return result;
+  }
+
+ private:
+  Func func;
+};
+
+template<typename Func>
+class Filter : public Adapter<Filter<Func>> {
+ public:
+  explicit Filter(Func func) : func(func) {}
+
+  template<typename Container>
+  auto apply(const Container& container) const {
+    Container result;
+    for (const auto& elem : container) {
+      if (func(elem)) {
+        result.push_back(elem);
+      }
+    }
+
+    return result;
+  }
+
+ private:
+  Func func;
+};
+
+class Take : public Adapter<Take> {
+ public:
+  explicit Take(size_t n) : n(n) {}
+
+  template<typename Container>
+  auto apply(const Container& container) const {
+    Container result;
     size_t count = 0;
-    for (auto it = begin(); it != end(); ++it) {
-      ++count;
+    for (const auto& elem : container) {
+      if (count++ >= n) break;
+      result.push_back(elem);
     }
-    return count;
+
+    return result;
   }
 
  private:
-  Container& container;
-  Predicate pred;
+  size_t n;
 };
 
-//Transform
-template<typename Iterator, typename Function>
-class TransformIterator {
+class Drop : public Adapter<Drop> {
  public:
-  using iterator_category = std::bidirectional_iterator_tag;
-  using value_type = decltype(std::declval<Function>()(*std::declval<Iterator>()));  // Используем decltype для определения типа результата функции
-  using difference_type = typename std::iterator_traits<Iterator>::difference_type;
-  using pointer = value_type*;
-  using reference = value_type;
+  explicit Drop(size_t n) : n(n) {}
 
-  TransformIterator(Iterator current, Iterator end, Function func, bool is_end = false)
-      : current_(current), end_(end), func_(func) {}
-
-  value_type operator*() const { return func_(*current_); }
-  TransformIterator& operator++() {
-    if (current_ != end_) {
-      ++current_;
+  template<typename Container>
+  auto apply(const Container& container) const {
+    Container result;
+    size_t count = 0;
+    for (const auto& elem : container) {
+      if (count++ < n) continue;
+      result.push_back(elem);
     }
-    return *this;
+
+    return result;
   }
-  TransformIterator operator++(int) {
-    TransformIterator tmp = *this;
-    ++(*this);
-    return tmp;
-  }
-  TransformIterator& operator--() {
-    --current_;
-    return *this;
-  }
-  TransformIterator operator--(int) {
-    TransformIterator tmp = *this;
-    --(*this);
-    return tmp;
-  }
-  bool operator==(const TransformIterator& other) const { return current_ == other.current_; }
-  bool operator!=(const TransformIterator& other) const { return !(*this == other); }
 
  private:
-  Iterator current_, end_;
-  Function func_;
+  size_t n;
 };
 
-template<typename Container, typename Function>
-class Transform {
+class Reverse : public Adapter<Reverse> {
  public:
-  using iterator = TransformIterator<typename Container::iterator, Function>;
+  template<typename Container>
+  auto apply(const Container& container) const {
+    Container result(container.rbegin(), container.rend());
 
-  Transform(Container& c, Function f) : container(c), func(f) {}
-
-  iterator begin() { return iterator(container.begin(), container.end(), func); }
-  iterator end() { return iterator(container.end(), container.end(), func); }
-  size_t size() {
-    return std::distance(begin(), end());
+    return result;
   }
-
- private:
-  Container& container;
-  Function func;
 };
 
-//Take
-template<typename Iterator>
-class TakeIterator {
+class Keys : public Adapter<Keys> {
  public:
-  using iterator_category = std::bidirectional_iterator_tag;
-  using value_type = typename std::iterator_traits<Iterator>::value_type;
-  using difference_type = typename std::iterator_traits<Iterator>::difference_type;
-  using pointer = typename std::iterator_traits<Iterator>::pointer;
-  using reference = typename std::iterator_traits<Iterator>::reference;
-
-  TakeIterator(Iterator current, Iterator end, size_t count)
-      : current_(current), end_(end), count_(count), start_(0) {}
-
-  reference operator*() const { return *current_; }
-  pointer operator->() { return &(*current_); }
-  TakeIterator& operator++() {
-    if (start_ < count_ && current_ != end_) {
-      ++current_;
-      ++start_;
+  template<typename Container>
+  auto apply(const Container& container) const {
+    std::vector<typename Container::key_type> result;
+    result.reserve(container.size());
+    for (const auto& elem : container) {
+      result.push_back(elem.first);
     }
-    return *this;
-  }
-  TakeIterator operator++(int) {
-    TakeIterator tmp = *this;
-    ++(*this);
-    return tmp;
-  }
-  TakeIterator& operator--() {
-    if (start_ > 0 && current_ != end_) {
-      --current_;
-      --start_;
-    }
-    return *this;
-  }
-  TakeIterator operator--(int) {
-    TakeIterator tmp = *this;
-    --(*this);
-    return tmp;
-  }
-  bool operator==(const TakeIterator& other) const { return (current_ == other.current_); }
-  bool operator!=(const TakeIterator& other) const { return !(*this == other); }
+    std::reverse(result.begin(), result.end());
 
- private:
-  Iterator current_, end_;
-  size_t count_, start_;
+    return result;
+  }
 };
 
-//Take
+class Values : public Adapter<Values> {
+ public:
+  template<typename Container>
+  auto apply(const Container& container) const {
+    std::vector<typename Container::mapped_type> result;
+    result.reserve(container.size());
+    for (const auto& elem : container) {
+      result.push_back(elem.second);
+    }
+    std::reverse(result.begin(), result.end());
+
+    return result;
+  }
+};
+
+// Позволяет превращать многомерный контейнер в линейный
 template<typename Container>
-class Take {
+class Flatten : public Adapter<Flatten<Container>> {
  public:
-  using iterator = TakeIterator<typename Container::iterator>;
+  Flatten() {}
 
-  Take(Container& c, size_t count)
-      : container(c), count(count) {}
+  template<typename InnerContainer>
+  auto apply(const std::vector<InnerContainer>& container) const {
+    using ValueType = typename InnerContainer::value_type;
+    std::vector<ValueType> result;
 
-  iterator begin() { return iterator(container.begin(), container.end(), count); }
-  iterator end() {
-    auto start = container.begin();
-    std::advance(start,
-                 std::min(count, container.size()));  // Перемещаем итератор на минимум из count или размера контейнера
-    return iterator(start, container.end(), 0);  // Передаем 0, так как "end" должен обозначать конец диапазона
-  }
-
- private:
-  Container& container;
-  size_t count;
-};
-
-//Drop
-template<typename Iterator>
-class DropIterator {
- public:
-  using iterator_category = std::bidirectional_iterator_tag;
-  using value_type = typename std::iterator_traits<Iterator>::value_type;
-  using difference_type = typename std::iterator_traits<Iterator>::difference_type;
-  using pointer = typename std::iterator_traits<Iterator>::pointer;
-  using reference = typename std::iterator_traits<Iterator>::reference;
-
-  DropIterator(Iterator current, Iterator end, size_t count)
-      : current_(current), end_(end) {
-    for (size_t i = 0; i < count && current_ != end_; ++i) {
-      ++current_;
+    for (const auto& inner : container) {
+      result.insert(result.end(), inner.begin(), inner.end());
     }
+
+    return result;
   }
-
-  reference operator*() const { return *current_; }
-  pointer operator->() { return &(*current_); }
-  DropIterator& operator++() {
-    if (current_ != end_) {
-      ++current_;
-    }
-    return *this;
-  }
-  DropIterator operator++(int) {
-    DropIterator tmp = *this;
-    ++(*this);
-    return tmp;
-  }
-  DropIterator& operator--() {
-    --current_;
-    return *this;
-  }
-  DropIterator operator--(int) {
-    DropIterator tmp = *this;
-    --(*this);
-    return tmp;
-  }
-  bool operator==(const DropIterator& other) const { return current_ == other.current_; }
-  bool operator!=(const DropIterator& other) const { return !(*this == other); }
-
- private:
-  Iterator current_, end_;
-};
-
-// Drop
-template<typename Container>
-class Drop {
- public:
-  using iterator = DropIterator<typename Container::iterator>;
-
-  Drop(Container& c, size_t count)
-      : container(c), count(count) {}
-
-  iterator begin() { return iterator(container.begin(), container.end(), count); }
-  iterator end() { return iterator(container.end(), container.end(), 0); }
-  size_t size() {
-    return std::distance(begin(), end());
-  }
-
- private:
-  Container& container;
-  size_t count;
-};
-
-//Reverse
-template<typename Container>
-class Reverse {
- public:
-  using iterator = std::reverse_iterator<typename Container::iterator>;
-
-  Reverse(Container& c)
-      : container(c) {}
-
-  iterator begin() { return std::make_reverse_iterator(container.end()); }
-  iterator end() { return std::make_reverse_iterator(container.begin()); }
-  size_t size() {
-    return std::distance(begin(), end());
-  }
-
- private:
-  Container& container;
-};
-
-// Пример итератора для Keys
-template<typename Iterator>
-class KeysIterator {
- public:
-  using iterator_category = std::bidirectional_iterator_tag;
-  using value_type = typename Iterator::value_type::first_type;
-  using difference_type = typename std::iterator_traits<Iterator>::difference_type;
-  using pointer = const value_type*;
-  using reference = const value_type&;
-
-  explicit KeysIterator(Iterator it) : it_(it) {}
-
-  reference operator*() const { return it_->first; }
-  pointer operator->() const { return &(it_->first); }
-  KeysIterator& operator++() {
-    ++it_;
-    return *this;
-  }
-  KeysIterator operator++(int) {
-    KeysIterator tmp = *this;
-    ++(*this);
-    return tmp;
-  }
-  KeysIterator& operator--() {
-    --it_;
-    return *this;
-  }
-  KeysIterator operator--(int) {
-    KeysIterator tmp = *this;
-    --(*this);
-    return tmp;
-  }
-  bool operator==(const KeysIterator& other) const { return it_ == other.it_; }
-  bool operator!=(const KeysIterator& other) const { return it_ != other.it_; }
-
- private:
-  Iterator it_;
-};
-
-//Keys
-template<typename Container>
-class Keys {
- public:
-  using internal_iterator = typename Container::iterator;
-  using iterator = KeysIterator<internal_iterator>;
-
-  Keys(Container& c) : container_(c) {}
-
-  iterator begin() { return iterator(container_.begin()); }
-  iterator end() { return iterator(container_.end()); }
-
- private:
-  Container& container_;
-};
-
-//Values
-template<typename Iterator>
-class ValuesIterator {
- public:
-  using iterator_category = std::bidirectional_iterator_tag;
-  using value_type = typename Iterator::value_type::second_type;
-  using difference_type = typename std::iterator_traits<Iterator>::difference_type;
-  using pointer = const value_type*;
-  using reference = const value_type&;
-
-  explicit ValuesIterator(Iterator it) : it_(it) {}
-
-  reference operator*() const { return it_->second; }
-  pointer operator->() const { return &(it_->second); }
-  ValuesIterator& operator++() {
-    ++it_;
-    return *this;
-  }
-  ValuesIterator operator++(int) {
-    ValuesIterator tmp = *this;
-    ++(*this);
-    return tmp;
-  }
-  ValuesIterator& operator--() {
-    --it_;
-    return *this;
-  }
-  ValuesIterator operator--(int) {
-    ValuesIterator tmp = *this;
-    --(*this);
-    return tmp;
-  }
-  bool operator==(const ValuesIterator& other) const { return it_ == other.it_; }
-  bool operator!=(const ValuesIterator& other) const { return it_ != other.it_; }
-
- private:
-  Iterator it_;
 };
 
 template<typename Container>
-class Values {
+auto flatten() {
+
+  return Flatten<Container>();
+}
+
+// Пакуем две коллекции в пары ключ значение
+template<typename Container1, typename Container2>
+class Zip : public Adapter<Zip<Container1, Container2>> {
  public:
-  using internal_iterator = typename Container::iterator;
-  using iterator = ValuesIterator<internal_iterator>;
+  Zip(const Container1& c1, const Container2& c2) : c1(c1), c2(c2) {}
 
-  Values(Container& c) : container_(c) {}
+  template<typename Unused>
+  auto apply(const Unused&) const {
+    using ValueType1 = typename Container1::value_type;
+    using ValueType2 = typename Container2::value_type;
+    using ResultType = std::vector<std::pair<ValueType1, ValueType2>>;
 
-  iterator begin() { return iterator(container_.begin()); }
-  iterator end() { return iterator(container_.end()); }
+    ResultType result;
+    auto it1 = c1.begin();
+    auto it2 = c2.begin();
+
+    while (it1 != c1.end() && it2 != c2.end()) {
+      result.emplace_back(*it1, *it2);
+      ++it1;
+      ++it2;
+    }
+
+    return result;
+  }
 
  private:
-  Container& container_;
+  const Container1& c1;
+  const Container2& c2;
 };
+
+template<typename Container1, typename Container2>
+auto zip(const Container1& c1, const Container2& c2) {
+
+  return Zip<Container1, Container2>(c1, c2);
+}
+
+//Делаем циклической коллекцию n раз
+template<typename Container>
+class Cycle : public Adapter<Cycle<Container>> {
+ public:
+  explicit Cycle(size_t n) : n(n) {}
+
+  auto apply(const Container& container) const {
+    using ValueType = typename Container::value_type;
+    std::vector<ValueType> result;
+
+    for (size_t i = 0; i < n; ++i) {
+      result.insert(result.end(), container.begin(), container.end());
+    }
+
+    return result;
+  }
+
+ private:
+  size_t n;
+};
+
+template<typename Container>
+auto cycle(size_t n) {
+
+  return Cycle<Container>(n);
+}
+
+// Максимальный элемент
+template<typename Comparator>
+class MaxElement : public Adapter<MaxElement<Comparator>> {
+ public:
+  explicit MaxElement(Comparator comp) : comp(comp) {}
+
+  template<typename Container>
+  auto apply(const Container& container) const {
+
+    return *std::max_element(container.begin(), container.end(), comp);
+  }
+
+ private:
+  Comparator comp;
+};
+
+template<typename Comparator>
+auto max_element(Comparator comp) {
+
+  return MaxElement<Comparator>(comp);
+}
+
+//Сортировка по некоторому признаку
+template<typename Comparator = std::less<>>
+class Sort : public Adapter<Sort<Comparator>> {
+ public:
+  explicit Sort(Comparator comp = Comparator()) : comp(comp) {}
+
+  template<typename Container>
+  auto apply(Container container) const {
+    std::sort(container.begin(), container.end(), comp);
+
+    return container;
+  }
+
+ private:
+  Comparator comp;
+};
+
+template<typename Comparator = std::less<>>
+auto sort(Comparator comp = Comparator()) {
+
+  return Sort<Comparator>(comp);
+}
+
+//минимальный элемент
+template<typename Comparator>
+class MinElement : public Adapter<MinElement<Comparator>> {
+ public:
+  explicit MinElement(Comparator comp) : comp(comp) {}
+
+  template<typename Container>
+  auto apply(const Container& container) const {
+
+    return *std::min_element(container.begin(), container.end(), comp);
+  }
+
+ private:
+  Comparator comp;
+};
+
+template<typename Comparator>
+auto min_element(Comparator comp) {
+
+  return MinElement<Comparator>(comp);
+}
+
+//Удаляет дубликаты из коллекции
+class Distinct : public Adapter<Distinct> {
+ public:
+  template<typename Container>
+  auto apply(const Container& container) const {
+    Container result;
+    std::unordered_set<typename Container::value_type> seen;
+    for (const auto& elem : container) {
+      if (seen.insert(elem).second) {
+        result.push_back(elem);
+      }
+    }
+
+    return result;
+  }
+};
+
+auto distinct() {
+
+  return Distinct();
+}
+
+//Первый элемент в коллекции
+class First : public Adapter<First> {
+ public:
+  template<typename Container>
+  auto apply(const Container& container) const {
+    if (container.empty()) {
+      throw std::out_of_range("Container is empty");
+    }
+
+    return container.front();
+  }
+};
+
+auto first() {
+
+  return First();
+}
+
+//Последний элемент в коллекции
+class Last : public Adapter<Last> {
+ public:
+  template<typename Container>
+  auto apply(const Container& container) const {
+    if (container.empty()) {
+      throw std::out_of_range("Container is empty");
+    }
+
+    return container.back();
+  }
+};
+
+auto last() {
+
+  return Last();
+}
+
+//Пересечение двух коллекций
+template<typename Container1, typename Container2>
+class Intersect : public Adapter<Intersect<Container1, Container2>> {
+ public:
+  Intersect(const Container1& c1, const Container2& c2) : c1(c1), c2(c2) {}
+
+  auto apply(const std::vector<typename Container1::value_type>&) const {
+    using ValueType = typename Container1::value_type;
+    std::unordered_set<ValueType> set1(c1.begin(), c1.end());
+    std::unordered_set<ValueType> set2(c2.begin(), c2.end());
+
+    std::vector<ValueType> result;
+    for (const auto& elem : set1) {
+      if (set2.find(elem) != set2.end()) {
+        result.push_back(elem);
+      }
+    }
+
+    return result;
+  }
+
+ private:
+  const Container1& c1;
+  const Container2& c2;
+};
+
+template<typename Container1, typename Container2>
+auto intersect(const Container1& c1, const Container2& c2) {
+
+  return Intersect<Container1, Container2>(c1, c2);
+}
+
+// Оператор для цепочки адаптеров
+template<typename Container, typename Adapter>
+auto operator|(const Container& container, const Adapter& adapter) {
+
+  return adapter(container);
+}

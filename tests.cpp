@@ -1,392 +1,684 @@
 #include <gtest/gtest.h>
 #include <vector>
-#include <list>
-#include <deque>
-#include <map>
 #include "adapter.h"
 
-// Тесты для Filter
-TEST(FilterTest, OddNumbers) {
-  std::vector<int> v = {1, 2, 3, 4, 5};
-  auto result = Filter(v, [](int x) { return x % 2 != 0; });
-  std::vector<int> expected = {1, 3, 5};
-  ASSERT_TRUE(std::equal(result.begin(), result.end(), expected.begin()));
+TEST(TransformTest, MultiplyByTwo) {
+  std::vector<int> vec = {1, 2, 3, 4, 5};
+  auto result = vec | Transform([](int x) { return x * 2; });
+  EXPECT_EQ(result, (std::vector<int>{2, 4, 6, 8, 10}));
 }
 
-TEST(FilterTest, EmptyContainer) {
-  std::vector<int> v = {};
-  auto result = Filter(v, [](int x) { return x % 2 != 0; });
-  ASSERT_TRUE(result.begin() == result.end());
+TEST(TransformTest, AddOne) {
+  std::vector<int> vec = {1, 2, 3, 4, 5};
+  auto result = vec | Transform([](int x) { return x + 1; });
+  EXPECT_EQ(result, (std::vector<int>{2, 3, 4, 5, 6}));
 }
 
-TEST(FilterTest, AllFilteredOut) {
-  std::vector<int> v = {2, 4, 6, 8};
-  auto result = Filter(v, [](int x) { return x % 2 != 0; });
-  ASSERT_TRUE(result.begin() == result.end());
+TEST(TransformTest, Square) {
+  std::vector<int> vec = {1, 2, 3, 4, 5};
+  auto result = vec | Transform([](int x) { return x * x; });
+  EXPECT_EQ(result, (std::vector<int>{1, 4, 9, 16, 25}));
 }
 
-// Тест для Transform
-TEST(TransformTest, SquareOfNumbers) {
-  std::vector<int> numbers = {1, 2, 3, 4};
-  std::vector<int> expected = {1, 4, 9, 16};
-
-  auto result = Transform(numbers, [](int x) { return x * x; });
-  ASSERT_TRUE(std::equal(result.begin(), result.end(), expected.begin()));
+TEST(FilterTest, EvenNumbers) {
+  std::vector<int> vec = {1, 2, 3, 4, 5};
+  auto result = vec | Filter([](int x) { return x % 2 == 0; });
+  EXPECT_EQ(result, (std::vector<int>{2, 4}));
 }
 
-TEST(TransformTest, NegateNumbers) {
-  std::vector<int> numbers = {1, -2, 3, -4};
-  std::vector<int> expected = {-1, 2, -3, 4};
-
-  auto result = Transform(numbers, [](int x) { return -x; });
-  ASSERT_TRUE(std::equal(result.begin(), result.end(), expected.begin()));
+TEST(FilterTest, GreaterThanThree) {
+  std::vector<int> vec = {1, 2, 3, 4, 5};
+  auto result = vec | Filter([](int x) { return x > 3; });
+  EXPECT_EQ(result, (std::vector<int>{4, 5}));
 }
 
-TEST(TransformTest, IncrementNumbers) {
-  std::vector<int> numbers = {0, 1, 2, 3};
-  std::vector<int> expected = {1, 2, 3, 4};
-
-  auto result = Transform(numbers, [](int x) { return x + 1; });
-  ASSERT_TRUE(std::equal(result.begin(), result.end(), expected.begin()));
+TEST(FilterTest, LessOrEqualThree) {
+  std::vector<int> vec = {1, 2, 3, 4, 5};
+  auto result = vec | Filter([](int x) { return x <= 3; });
+  EXPECT_EQ(result, (std::vector<int>{1, 2, 3}));
 }
 
-TEST(TransformTest, EmptyVector) {
-  std::vector<int> numbers;
-  auto result = Transform(numbers, [](int x) { return x * x; });
-  ASSERT_TRUE(result.begin() == result.end());
+TEST(TakeTest, TakeThree) {
+  std::vector<int> vec = {1, 2, 3, 4, 5};
+  auto result = vec | Take(3);
+  EXPECT_EQ(result, (std::vector<int>{1, 2, 3}));
 }
 
-// Тест для Take
-TEST(TakeTest, TakeFirstTwoNumbers) {
-  std::vector<int> numbers = {1, 2, 3, 4};
-  std::vector<int> expected = {1, 2};
-
-  auto taken = Take(numbers, 2); // Сохраняем результат вызова Take в переменную
-  ASSERT_TRUE(std::equal(taken.begin(), taken.end(), expected.begin()));
+TEST(TakeTest, TakeZero) {
+  std::vector<int> vec = {1, 2, 3, 4, 5};
+  auto result = vec | Take(0);
+  EXPECT_TRUE(result.empty());
 }
 
-
-TEST(TakeTest, TakeMoreThanExists) {
-  std::vector<int> numbers = {1, 2};
-  auto result = Take(numbers, 5); // Пробуем взять больше элементов, чем есть
-  ASSERT_EQ(std::distance(result.begin(), result.end()), 2); // Ожидаем, что получим только 2 элемента
+TEST(TakeTest, TakeMoreThanSize) {
+  std::vector<int> vec = {1, 2, 3, 4, 5};
+  auto result = vec | Take(10);
+  EXPECT_EQ(result, vec);
 }
 
-TEST(TakeTest, TakeNone) {
-  std::vector<int> numbers = {1, 2, 3, 4};
-  auto result = Take(numbers, 0); // Не берем ни одного элемента
-  ASSERT_TRUE(result.begin() == result.end()); // Ожидаем пустой диапазон
+TEST(DropTest, DropThree) {
+  std::vector<int> vec = {1, 2, 3, 4, 5};
+  auto result = vec | Drop(3);
+  EXPECT_EQ(result, (std::vector<int>{4, 5}));
 }
 
-TEST(TakeTest, TakeExactNumber) {
-  std::vector<int> numbers = {1, 2, 3, 4};
-  std::vector<int> expected = {1, 2};
-  auto result = Take(numbers, 2); // Берем ровно два элемента
-  ASSERT_TRUE(std::equal(result.begin(), result.end(), expected.begin()));
+TEST(DropTest, DropZero) {
+  std::vector<int> vec = {1, 2, 3, 4, 5};
+  auto result = vec | Drop(0);
+  EXPECT_EQ(result, vec);
 }
 
-// Тест для Drop
-TEST(DropTest, DropFirstTwoNumbers) {
-  std::vector<int> numbers = {1, 2, 3, 4};
-  std::vector<int> expected = {3, 4};
-
-  auto result = Drop(numbers, 2);
-  ASSERT_TRUE(std::equal(result.begin(), result.end(), expected.begin()));
+TEST(DropTest, DropMoreThanSize) {
+  std::vector<int> vec = {1, 2, 3, 4, 5};
+  auto result = vec | Drop(10);
+  EXPECT_TRUE(result.empty());
 }
 
-TEST(DropTest, DropNone) {
-  std::vector<int> numbers = {1, 2, 3, 4};
-  auto result = Drop(numbers, 0); // Не убираем ни одного элемента
-  ASSERT_EQ(std::distance(result.begin(), result.end()), 4); // Ожидаем, что количество элементов не изменится
-}
-
-TEST(DropTest, DropAll) {
-  std::vector<int> numbers = {1, 2, 3, 4};
-  auto result = Drop(numbers, 4); // Убираем все элементы
-  ASSERT_TRUE(result.begin() == result.end()); // Ожидаем пустой диапазон
-}
-
-TEST(DropTest, DropMoreThanExists) {
-  std::vector<int> numbers = {1, 2};
-  auto result = Drop(numbers, 5); // Пробуем убрать больше элементов, чем есть
-  ASSERT_TRUE(result.begin() == result.end()); // Ожидаем пустой диапазон
-}
-
-// Тесты для Reverse
 TEST(ReverseTest, ReverseVector) {
-  std::vector<int> numbers = {1, 2, 3, 4};
-  std::vector<int> expected = {4, 3, 2, 1};
-
-  auto reversed = Reverse(numbers);
-  ASSERT_TRUE(std::equal(reversed.begin(), reversed.end(), expected.begin()));
+  std::vector<int> vec = {1, 2, 3, 4, 5};
+  auto result = vec | Reverse();
+  EXPECT_EQ(result, (std::vector<int>{5, 4, 3, 2, 1}));
 }
 
-TEST(ReverseTest, EmptyContainer) {
-  std::vector<int> numbers;
-
-  auto reversed = Reverse(numbers);
-  ASSERT_TRUE(reversed.begin() == reversed.end());
+TEST(ReverseTest, ReverseEmpty) {
+  std::vector<int> vec = {};
+  auto result = vec | Reverse();
+  EXPECT_TRUE(result.empty());
 }
 
-TEST(ReverseTest, SingleElement) {
-  std::vector<int> numbers = {1};
-
-  auto reversed = Reverse(numbers);
-  ASSERT_EQ(*reversed.begin(), 1);
+TEST(KeysValuesTest, Keys) {
+  std::unordered_map<int, std::string> map = {{1, "one"}, {2, "two"}, {3, "three"}};
+  auto result = map | Keys();
+  EXPECT_EQ(result, (std::vector<int>{1, 2, 3}));
 }
 
-TEST(ReverseTest, ReverseString) {
-  std::string str = "hello";
-  std::string expected = "olleh";
-
-  auto reversed = Reverse(str);
-  ASSERT_TRUE(std::equal(reversed.begin(), reversed.end(), expected.begin()));
+TEST(KeysValuesTest, Values) {
+  std::unordered_map<int, std::string> map = {{1, "one"}, {2, "two"}, {3, "three"}};
+  auto result = map | Values();
+  EXPECT_EQ(result, (std::vector<std::string>{"one", "two", "three"}));
 }
 
-//Тесты для Keys
-TEST(KeysTest, NonEmptyMap) {
-  std::map<int, std::string> m = {{1, "one"}, {2, "two"}, {3, "three"}};
-  auto keys = Keys(m);
-  std::vector<int> expected_keys = {1, 2, 3};
-  std::vector<int> actual_keys;
-  for (auto key : keys) {
-    actual_keys.push_back(key);
-  }
-  EXPECT_EQ(actual_keys, expected_keys);
+TEST(AdapterChainTest, TransformAndFilter) {
+  std::vector<int> vec = {1, 2, 3, 4, 5};
+  auto result = vec
+      | Transform([](int x) { return x * 2; })
+      | Filter([](int x) { return x % 4 == 0; });
+  EXPECT_EQ(result, (std::vector<int>{4, 8}));
 }
 
-TEST(KeysTest, EmptyMap) {
-  std::map<int, std::string> m;
-  auto keys = Keys(m);
-  EXPECT_EQ(keys.begin(), keys.end());
+TEST(AdapterChainTest, TransformFilterTake) {
+  std::vector<int> vec = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+  auto result = vec
+      | Transform([](int x) { return x * 2; })
+      | Filter([](int x) { return x % 3 == 0; })
+      | Take(3);
+  EXPECT_EQ(result, (std::vector<int>{6, 12, 18}));
 }
 
-TEST(KeysTest, NegativeKeys) {
-  std::map<int, std::string> m = {{-1, "minus one"}, {-2, "minus two"}};
-  auto keys = Keys(m);
-  std::vector<int> expected_keys = {-2, -1};
-  std::vector<int> actual_keys;
-  for (auto key : keys) {
-    actual_keys.push_back(key);
-  }
-  EXPECT_EQ(actual_keys, expected_keys);
+TEST(AdapterChainTest, TransformDropReverse) {
+  std::vector<int> vec = {1, 2, 3, 4, 5};
+  auto result = vec
+      | Transform([](int x) { return x * 3; })
+      | Drop(2)
+      | Reverse();
+  EXPECT_EQ(result, (std::vector<int>{15, 12, 9}));
 }
 
-TEST(KeysTest, DuplicateKeys) {
-  std::multimap<int, std::string> m = {{1, "one"}, {1, "uno"}};
-  auto keys = Keys(m);
-  std::vector<int> expected_keys = {1, 1};
-  std::vector<int> actual_keys;
-  for (auto key : keys) {
-    actual_keys.push_back(key);
-  }
-  EXPECT_EQ(actual_keys, expected_keys);
+TEST(AdapterChainTest, FilterTakeDrop) {
+  std::vector<int> vec = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+  auto result = vec
+      | Filter([](int x) { return x % 2 == 0; })
+      | Take(4)
+      | Drop(1);
+  EXPECT_EQ(result, (std::vector<int>{4, 6, 8}));
 }
 
-//Тесты для Values
-TEST(ValuesTest, NonEmptyMap) {
-  std::map<int, std::string> m = {{1, "one"}, {2, "two"}, {3, "three"}};
-  auto values = Values(m);
-  std::vector<std::string> expected_values = {"one", "two", "three"};
-  std::vector<std::string> actual_values;
-  for (const auto& value : values) {
-    actual_values.push_back(value);
-  }
-  EXPECT_EQ(actual_values, expected_values);
+TEST(AdapterChainTest, FilterReverseTransform) {
+  std::vector<int> vec = {10, 20, 30, 40, 50};
+  auto result = vec
+      | Filter([](int x) { return x > 20; })
+      | Reverse()
+      | Transform([](int x) { return x / 10; });
+  EXPECT_EQ(result, (std::vector<int>{5, 4, 3}));
 }
 
-TEST(ValuesTest, EmptyMap) {
-  std::map<int, std::string> m;
-  auto values = Values(m);
-  EXPECT_EQ(values.begin(), values.end());
+TEST(AdapterChainTest, TransformFilterReverse) {
+  std::vector<int> vec = {1, 2, 3, 4, 5};
+  auto result = vec
+      | Transform([](int x) { return x + 5; })
+      | Filter([](int x) { return x % 2 == 0; })
+      | Reverse();
+  EXPECT_EQ(result, (std::vector<int>{10, 8, 6}));
 }
 
-TEST(ValuesTest, SpecialCharacters) {
-  std::map<int, std::string> m = {{1, "one&two"}, {2, "three>four"}};
-  auto values = Values(m);
-  std::vector<std::string> expected_values = {"one&two", "three>four"};
-  std::vector<std::string> actual_values;
-  for (const auto& value : values) {
-    actual_values.push_back(value);
-  }
-  EXPECT_EQ(actual_values, expected_values);
+TEST(AdapterChainTest, DropTakeTransform) {
+  std::vector<int> vec = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+  auto result = vec
+      | Drop(3)
+      | Take(4)
+      | Transform([](int x) { return x * 2; });
+  EXPECT_EQ(result, (std::vector<int>{8, 10, 12, 14}));
 }
 
-TEST(ValuesTest, LargeValues) {
-  std::string large_value(1000, 'x');
-  std::map<int, std::string> m = {{1, large_value}};
-  auto values = Values(m);
-  std::vector<std::string> actual_values;
-  for (const auto& value : values) {
-    actual_values.push_back(value);
-  }
-  EXPECT_EQ(actual_values.size(), 1);
-  EXPECT_EQ(actual_values[0], large_value);
+TEST(AdapterChainTest, ReverseTakeFilter) {
+  std::vector<int> vec = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+  auto result = vec
+      | Reverse()
+      | Take(5)
+      | Filter([](int x) { return x > 6; });
+  EXPECT_EQ(result, (std::vector<int>{10, 9, 8, 7}));
 }
 
-//Комбинированные тесты
-TEST(AdapterTests, FilterTransformTest) {
+TEST(AdapterChainTest, KeysValuesTransform) {
+  std::unordered_map<int, std::string> map = {{1, "one"}, {2, "two"}, {3, "three"}};
+  auto result = map
+      | Keys()
+      | Transform([](int x) { return x * 10; });
+  EXPECT_EQ(result, (std::vector<int>{10, 20, 30}));
+}
+
+TEST(AdapterChainTest, ValuesReverseFilter) {
+  std::unordered_map<int, std::string> map = {{1, "one"}, {2, "two"}, {3, "three"}};
+  auto result = map
+      | Values()
+      | Reverse()
+      | Filter([](const std::string& s) { return s.size() == 3; });
+  EXPECT_EQ(result, (std::vector<std::string>{"two", "one"}));
+}
+
+TEST(AdapterChainTest, TransformTakeDropKeys) {
+  std::unordered_map<int, std::string> map = {{1, "one"}, {2, "two"}, {3, "three"}, {4, "four"}, {5, "five"}};
+  auto result = map
+      | Keys()
+      | Transform([](int x) { return x + 1; })
+      | Take(4)
+      | Drop(2);
+  EXPECT_EQ(result, (std::vector<int>{4, 5}));
+}
+
+TEST(AdapterChainTest, DropReverseTakeTransform) {
+  std::vector<int> vec = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+  auto result = vec
+      | Drop(3)
+      | Reverse()
+      | Take(4)
+      | Transform([](int x) { return x - 2; });
+  EXPECT_EQ(result, (std::vector<int>{8, 7, 6, 5}));
+}
+
+TEST(AdapterChainTest, ComplexChain) {
+  std::vector<int> vec = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+  auto result = vec
+      | Transform([](int x) { return x * 2; })
+      | Filter([](int x) { return x > 10; })
+      | Drop(1)
+      | Take(2)
+      | Reverse();
+  EXPECT_EQ(result, (std::vector<int>{16, 14}));
+}
+
+TEST(AdapterChainTest, MultipleTransforms) {
+  std::vector<int> vec = {1, 2, 3, 4, 5};
+  auto result = vec
+      | Transform([](int x) { return x * 2; })
+      | Transform([](int x) { return x + 3; });
+  EXPECT_EQ(result, (std::vector<int>{5, 7, 9, 11, 13}));
+}
+
+TEST(AdapterChainTest, MultipleFilters) {
+  std::vector<int> vec = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+  auto result = vec
+      | Filter([](int x) { return x % 2 == 0; })
+      | Filter([](int x) { return x > 5; });
+  EXPECT_EQ(result, (std::vector<int>{6, 8, 10}));
+}
+
+TEST(AdapterChainTest, TransformFilterDropReverse) {
+  std::vector<int> vec = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+  auto result = vec
+      | Transform([](int x) { return x * 2; })
+      | Filter([](int x) { return x > 10; })
+      | Drop(2)
+      | Reverse();
+  EXPECT_EQ(result, (std::vector<int>{20, 18, 16}));
+}
+
+TEST(AdapterChainTest, DropTakeFilterTransform) {
+  std::vector<int> vec = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+  auto result = vec
+      | Drop(2)
+      | Take(5)
+      | Filter([](int x) { return x % 2 == 0; })
+      | Transform([](int x) { return x * 3; });
+  EXPECT_EQ(result, (std::vector<int>{12, 18}));
+}
+
+TEST(AdapterChainTest, ReverseKeysValues) {
+  std::unordered_map<int, std::string> map = {{1, "one"}, {2, "two"}, {3, "three"}};
+  auto result = map
+      | Keys()
+      | Reverse()
+      | Transform([](int x) { return x * 5; });
+  EXPECT_EQ(result, (std::vector<int>{15, 10, 5}));
+}
+
+TEST(AdapterChainTest, ComplexChainWithValues) {
+  std::unordered_map<int, std::string> map = {{1, "one"}, {2, "two"}, {3, "three"}, {4, "four"}};
+  auto result = map
+      | Values()
+      | Transform([](const std::string& s) { return s + "!"; })
+      | Filter([](const std::string& s) { return s.size() > 4; });
+  EXPECT_EQ(result, (std::vector<std::string>{"three!", "four!"}));
+}
+
+TEST(AdapterChainTest, TransformFilterReverseEmptyVector) {
+  std::vector<int> vec = {};
+  auto result = vec
+      | Transform([](int x) { return x * 2; })
+      | Filter([](int x) { return x % 3 == 0; })
+      | Reverse();
+  EXPECT_TRUE(result.empty());
+}
+
+TEST(AdapterChainTest, FilterDropTakeReverse) {
+  std::vector<int> vec = {10, 20, 30, 40, 50, 60, 70, 80, 90, 100};
+  auto result = vec
+      | Filter([](int x) { return x > 30; })
+      | Drop(1)
+      | Take(4)
+      | Reverse();
+  EXPECT_EQ(result, (std::vector<int>{80, 70, 60, 50}));
+}
+
+TEST(AdapterChainTest, DropReverseFilterTransform) {
+  std::vector<int> vec = {5, 10, 15, 20, 25, 30, 35, 40, 45, 50};
+  auto result = vec
+      | Drop(4)
+      | Reverse()
+      | Filter([](int x) { return x % 3 == 0; })
+      | Transform([](int x) { return x / 3; });
+  EXPECT_EQ(result, (std::vector<int>{15, 10}));
+}
+
+TEST(AdapterChainTest, MultipleTakes) {
+  std::vector<int> vec = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+  auto result = vec
+      | Take(8)
+      | Take(5);
+  EXPECT_EQ(result, (std::vector<int>{1, 2, 3, 4, 5}));
+}
+
+TEST(AdapterChainTest, MultipleDrops) {
+  std::vector<int> vec = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+  auto result = vec
+      | Drop(2)
+      | Drop(3);
+  EXPECT_EQ(result, (std::vector<int>{6, 7, 8, 9, 10}));
+}
+
+TEST(AdapterChainTest, FilterAllFalse) {
+  std::vector<int> vec = {1, 2, 3, 4, 5};
+  auto result = vec | Filter([](int x) { return x > 10; });
+  EXPECT_TRUE(result.empty());
+}
+
+TEST(AdapterChainTest, TransformNegativeNumbers) {
+  std::vector<int> vec = {-1, -2, -3, -4, -5};
+  auto result = vec | Transform([](int x) { return x * x; });
+  EXPECT_EQ(result, (std::vector<int>{1, 4, 9, 16, 25}));
+}
+
+TEST(AdapterChainTest, FilterNegativeNumbers) {
+  std::vector<int> vec = {-1, -2, -3, -4, -5};
+  auto result = vec | Filter([](int x) { return x < -3; });
+  EXPECT_EQ(result, (std::vector<int>{-4, -5}));
+}
+
+TEST(AdapterChainTest, DropAndReverse) {
+  std::vector<int> vec = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+  auto result = vec
+      | Drop(5)
+      | Reverse();
+  EXPECT_EQ(result, (std::vector<int>{10, 9, 8, 7, 6}));
+}
+
+TEST(ZipTest, BasicZip) {
+  std::vector<int> v1 = {1, 2, 3};
+  std::vector<char> v2 = {'a', 'b', 'c'};
+  auto zipped = v1 | zip(v1, v2);
+  std::vector<std::pair<int, char>> expected = {{1, 'a'}, {2, 'b'}, {3, 'c'}};
+  EXPECT_EQ(zipped, expected);
+}
+
+TEST(ZipTest, DifferentSizes) {
+  std::vector<int> v1 = {1, 2};
+  std::vector<char> v2 = {'a', 'b', 'c'};
+  auto zipped = v1 | zip(v1, v2);
+  std::vector<std::pair<int, char>> expected = {{1, 'a'}, {2, 'b'}};
+  EXPECT_EQ(zipped, expected);
+}
+
+TEST(ZipTest, EmptyVectors) {
+  std::vector<int> v1 = {};
+  std::vector<char> v2 = {};
+  auto zipped = v1 | zip(v1, v2);
+  std::vector<std::pair<int, char>> expected = {};
+  EXPECT_EQ(zipped, expected);
+}
+
+TEST(CycleTest, BasicCycle) {
+  std::vector<int> v = {1, 2, 3};
+  auto cycled = v | cycle<std::vector<int>>(2);
+  std::vector<int> expected = {1, 2, 3, 1, 2, 3};
+  EXPECT_EQ(cycled, expected);
+}
+
+TEST(CycleTest, CycleZeroTimes) {
+  std::vector<int> v = {1, 2, 3};
+  auto cycled = v | cycle<std::vector<int>>(0);
+  std::vector<int> expected = {};
+  EXPECT_EQ(cycled, expected);
+}
+
+TEST(CycleTest, EmptyVector) {
+  std::vector<int> v = {};
+  auto cycled = v | cycle<std::vector<int>>(3);
+  std::vector<int> expected = {};
+  EXPECT_EQ(cycled, expected);
+}
+
+TEST(FlattenTest, BasicFlatten) {
+  std::vector<std::vector<int>> nested = {{1, 2}, {3, 4, 5}, {6}};
+  auto flattened = nested | flatten<std::vector<int>>();
+  std::vector<int> expected = {1, 2, 3, 4, 5, 6};
+  EXPECT_EQ(flattened, expected);
+}
+
+TEST(FlattenTest, EmptyInnerVectors) {
+  std::vector<std::vector<int>> nested = {{}, {}, {}};
+  auto flattened = nested | flatten<std::vector<int>>();
+  std::vector<int> expected = {};
+  EXPECT_EQ(flattened, expected);
+}
+
+TEST(FlattenTest, MixedEmptyAndNonEmpty) {
+  std::vector<std::vector<int>> nested = {{}, {1, 2, 3}, {}, {4, 5}};
+  auto flattened = nested | flatten<std::vector<int>>();
+  std::vector<int> expected = {1, 2, 3, 4, 5};
+  EXPECT_EQ(flattened, expected);
+}
+
+TEST(MaxElementTest, BasicMaxElement) {
+  std::vector<int> v = {1, 2, 3, 4, 5};
+  auto maxElem = v | max_element(std::less<int>());
+  EXPECT_EQ(maxElem, 5);
+}
+
+TEST(MaxElementTest, SingleElement) {
+  std::vector<int> v = {10};
+  auto maxElem = v | max_element(std::less<int>());
+  EXPECT_EQ(maxElem, 10);
+}
+
+TEST(MaxElementTest, AllEqualElements) {
+  std::vector<int> v = {7, 7, 7, 7};
+  auto maxElem = v | max_element(std::less<int>());
+  EXPECT_EQ(maxElem, 7);
+}
+
+// Цепочка адаптеров с использованием zip и cycle
+TEST(ChainAdaptersTest, ZipAndCycle) {
+  std::vector<int> v1 = {1, 2, 3};
+  std::vector<char> v2 = {'a', 'b', 'c'};
+  auto zipped = v1 | zip(v1, v2) | cycle<std::vector<std::pair<int, char>>>(2);
+  std::vector<std::pair<int, char>> expected = {{1, 'a'}, {2, 'b'}, {3, 'c'}, {1, 'a'}, {2, 'b'}, {3, 'c'}};
+  EXPECT_EQ(zipped, expected);
+}
+
+// Цепочка адаптеров с использованием flatten и transform
+TEST(ChainAdaptersTest, FlattenAndTransform) {
+  std::vector<std::vector<int>> nested = {{1, 2}, {3, 4, 5}, {6}};
+  auto flattenedAndTransformed = nested | flatten<std::vector<int>>() | Transform([](int i) { return i * 2; });
+  std::vector<int> expected = {2, 4, 6, 8, 10, 12};
+  EXPECT_EQ(flattenedAndTransformed, expected);
+}
+
+// Цепочка адаптеров с использованием filter, transform и max_element
+TEST(ChainAdaptersTest, FilterTransformAndMaxElement) {
   std::vector<int> v = {1, 2, 3, 4, 5, 6};
-  std::vector<int> results;
-
-  auto filtered = Filter(v, [](int i) { return i % 2; });
-  auto transformed = Transform(filtered, [](int i) { return i * i; });
-
-  std::copy(transformed.begin(), transformed.end(), std::back_inserter(results));
-
-  std::vector<int> expected = {1, 9, 25};
-  EXPECT_EQ(results, expected);
+  auto maxElem = v | Filter([](int i) { return i % 2 == 0; }) | Transform([](int i) { return i * 2; })
+      | max_element(std::less<int>());
+  EXPECT_EQ(maxElem, 12);
 }
 
-TEST(AdapterTests, DropTransformTest) {
-  std::vector<int> v = {1, 2, 3, 4, 5, 6};
-  std::vector<int> results;
-
-  auto dropped = Drop(v, 2);
-  auto transformed = Transform(dropped, [](int i) { return i * 3; });
-
-  std::copy(transformed.begin(), transformed.end(), std::back_inserter(results));
-
-  std::vector<int> expected = {9, 12, 15, 18};
-  EXPECT_EQ(results, expected);
+// Цепочка адаптеров с использованием flatten и cycle
+TEST(ChainAdaptersTest, FlattenAndCycle) {
+  std::vector<std::vector<int>> nested = {{1, 2}, {3, 4, 5}};
+  auto flattenedAndCycled = nested | flatten<std::vector<int>>() | cycle<std::vector<int>>(2);
+  std::vector<int> expected = {1, 2, 3, 4, 5, 1, 2, 3, 4, 5};
+  EXPECT_EQ(flattenedAndCycled, expected);
 }
 
-TEST(AdapterTests, FilterTransformTakeTest) {
-  std::vector<int> v = {1, 2, 3, 4, 5, 6, 7, 8};
-  std::vector<int> results;
-
-  auto filtered = Filter(v, [](int i) { return i % 2 == 0; });
-  auto transformed = Transform(filtered, [](int i) { return i * 2; });
-  auto taken = Take(transformed, 2);
-
-  std::copy(taken.begin(), taken.end(), std::back_inserter(results));
-
-  std::vector<int> expected = {4, 8};
-  EXPECT_EQ(results, expected);
+// Цепочка адаптеров с использованием zip и max_element
+TEST(ChainAdaptersTest, ZipAndMaxElement) {
+  std::vector<int> v1 = {1, 2, 3};
+  std::vector<int> v2 = {4, 5, 6};
+  auto maxPair = v1 | zip(v1, v2) | max_element([](const std::pair<int, int>& a, const std::pair<int, int>& b) {
+    return (a.first + a.second) < (b.first + b.second);
+  });
+  std::pair<int, int> expected = {3, 6};
+  EXPECT_EQ(maxPair, expected);
 }
 
-TEST(AdapterTests, ValuesTransformTest) {
-  std::map<int, int> m = {{1, 2}, {2, 3}, {3, 4}};
-  std::vector<int> values;
+// Цепочка адаптеров с использованием filter, zip и flatten
+TEST(ChainAdaptersTest, FilterZip) {
+  std::vector<int> v1 = {1, 2, 3, 4};
+  std::vector<int> v2 = {5, 6, 7, 8};
+  auto filteredV1 = v1 | Filter([](int i) { return i % 2 == 0; });
+  auto filteredV2 = v2 | Filter([](int i) { return i % 2 == 0; });
+  auto zipped = filteredV1 | zip(filteredV1, filteredV2);
 
-  auto values_view = Values(m);
-  auto incremented_values = Transform(values_view, [](int v) { return v + 1; });
-
-  std::copy(incremented_values.begin(), incremented_values.end(), std::back_inserter(values));
-
-  std::vector<int> expected = {3, 4, 5};
-  EXPECT_EQ(values, expected);
+  std::vector<std::pair<int, int>> expected = {{2, 6}, {4, 8}};
+  EXPECT_EQ(zipped, expected);
 }
 
-TEST(AdapterTests, KeysReverseTest) {
-  std::map<int, std::string> m = {{1, "one"}, {2, "two"}, {3, "three"}};
-  std::vector<int> keys;
-
-  auto keys_view = Keys(m);
-  auto reversed_keys = Reverse(keys_view);
-  std::copy(reversed_keys.begin(), reversed_keys.end(), std::back_inserter(keys));
-
-  std::vector<int> expected_keys = {3, 2, 1};
-  EXPECT_EQ(keys, expected_keys);
+TEST(MinElementTest, IntVector) {
+  std::vector<int> vec = {3, 1, 4, 1, 5, 9};
+  auto min_val = vec | min_element(std::less<int>());
+  EXPECT_EQ(min_val, 1);
 }
 
-TEST(AdapterTests, DropTransformFilterReverseVectorTest) {
-  std::vector<int> v = {1, 2, 3, 4, 5, 6, 7, 8};
-  std::vector<int> results;
-
-  auto dropped = Drop(v, 2);
-  auto filtered = Filter(dropped, [](int i) { return i % 2 == 0; });
-  auto transformed = Transform(filtered, [](int i) { return i * 2; });
-  auto reversed = Reverse(transformed);
-
-  std::copy(reversed.begin(), reversed.end(), std::back_inserter(results));
-
-  std::vector<int> expected = {16, 12, 8};
-  EXPECT_EQ(results, expected);
+TEST(MinElementTest, DoubleVector) {
+  std::vector<double> vec = {2.3, 1.5, 3.6, 1.2};
+  auto min_val = vec | min_element(std::less<double>());
+  EXPECT_DOUBLE_EQ(min_val, 1.2);
 }
 
-TEST(AdapterTests, ReverseTakeTransformTest) {
-  std::vector<int> v = {1, 2, 3, 4, 5, 6, 7, 8};
-  std::vector<int> results;
-
-  auto reversed = Reverse(v);
-  auto taken = Take(reversed, 4);
-  auto transformed = Transform(taken, [](int i) { return i * 2; });
-
-  std::copy(transformed.begin(), transformed.end(), std::back_inserter(results));
-
-  std::vector<int> expected = {16, 14, 12, 10};
-  EXPECT_EQ(results, expected);
+TEST(MinElementTest, StringVector) {
+  std::vector<std::string> vec = {"apple", "banana", "cherry"};
+  auto min_val = vec | min_element(std::less<std::string>());
+  EXPECT_EQ(min_val, "apple");
 }
 
-TEST(AdapterTests, TransformTakeKeysMapTest) {
-  std::map<int, int> m = {{1, 10}, {2, 20}, {3, 30}, {4, 40}};
-  std::vector<int> results;
-
-  auto keys = Keys(m);
-  auto transformed = Transform(keys, [](int key) { return key * key; });
-  auto taken = Take(transformed, 3);
-
-  std::copy(taken.begin(), taken.end(), std::back_inserter(results));
-
-  std::vector<int> expected = {1, 4, 9};
-  EXPECT_EQ(results, expected);
+TEST(MinElementTest, SingleElementVector) {
+  std::vector<int> vec = {10};
+  auto min_val = vec | min_element(std::less<int>());
+  EXPECT_EQ(min_val, 10);
 }
 
-TEST(AdapterTests, DoubleFilterTransformTest) {
-  std::vector<int> v = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
-  std::vector<int> results;
-
-  auto first_filter = Filter(v, [](int i) { return i % 2 == 0; });
-  auto second_filter = Filter(first_filter, [](int i) { return i > 4; });
-  auto transformed = Transform(second_filter, [](int i) { return i * 2; });
-
-  std::copy(transformed.begin(), transformed.end(), std::back_inserter(results));
-
-  std::vector<int> expected = {12, 16, 20};
-  EXPECT_EQ(results, expected);
+TEST(SortTest, IntVectorAsc) {
+  std::vector<int> vec = {3, 1, 4, 1, 5, 9};
+  auto sorted_vec = vec | sort(std::less<int>());
+  EXPECT_EQ(sorted_vec, std::vector<int>({1, 1, 3, 4, 5, 9}));
 }
 
-TEST(AdapterTests, DropTakeFilterTest) {
-  std::vector<int> v = {10, 20, 30, 40, 50, 60};
-  std::vector<int> results;
-
-  auto dropped = Drop(v, 1);
-  auto taken = Take(dropped, 3);
-  auto filtered = Filter(taken, [](int i) { return i % 20 == 0; });
-
-  std::copy(filtered.begin(), filtered.end(), std::back_inserter(results));
-
-  std::vector<int> expected = {20, 40};
-  EXPECT_EQ(results, expected);
+TEST(SortTest, DoubleVectorDesc) {
+  std::vector<double> vec = {2.3, 1.5, 3.6, 1.2};
+  auto sorted_vec = vec | sort(std::greater<double>());
+  EXPECT_EQ(sorted_vec, std::vector<double>({3.6, 2.3, 1.5, 1.2}));
 }
 
-TEST(AdapterTests, TransformTakeDropTest) {
-  std::vector<int> v = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
-  std::vector<int> results;
-
-  auto transformed = Transform(v, [](int i) { return i + 10; });
-  auto taken = Take(transformed, 5);
-  auto dropped = Drop(taken, 2);
-
-  std::copy(dropped.begin(), dropped.end(), std::back_inserter(results));
-
-  std::vector<int> expected = {13, 14, 15};
-  EXPECT_EQ(results, expected);
+TEST(SortTest, StringVectorAsc) {
+  std::vector<std::string> vec = {"cherry", "banana", "apple"};
+  auto sorted_vec = vec | sort(std::less<std::string>());
+  EXPECT_EQ(sorted_vec, std::vector<std::string>({"apple", "banana", "cherry"}));
 }
 
-TEST(AdapterTests, DoubleDropDoubleTakeTest) {
-  std::vector<int> v = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
-  std::vector<int> results;
+TEST(SortTest, SingleElementVector) {
+  std::vector<int> vec = {42};
+  auto sorted_vec = vec | sort(std::less<int>());
+  EXPECT_EQ(sorted_vec, std::vector<int>({42}));
+}
 
-  auto dropped_once = Drop(v, 2);
-  auto taken_once = Take(dropped_once, 5);
-  auto dropped_twice = Drop(taken_once, 1);
-  auto taken_twice = Take(dropped_twice, 3);
+TEST(DistinctTest, IntVector) {
+  std::vector<int> vec = {3, 1, 4, 1, 5, 9, 3};
+  auto distinct_vec = vec | distinct();
+  EXPECT_EQ(distinct_vec, std::vector<int>({3, 1, 4, 5, 9}));
+}
 
-  std::copy(taken_twice.begin(), taken_twice.end(), std::back_inserter(results));
+TEST(DistinctTest, DoubleVector) {
+  std::vector<double> vec = {2.3, 1.5, 2.3, 3.6, 1.2};
+  auto distinct_vec = vec | distinct();
+  EXPECT_EQ(distinct_vec, std::vector<double>({2.3, 1.5, 3.6, 1.2}));
+}
 
-  // Expected: [3, 4, 5]
-  std::vector<int> expected = {3, 4, 5};
-  EXPECT_EQ(results, expected);
+TEST(DistinctTest, StringVector) {
+  std::vector<std::string> vec = {"apple", "banana", "apple", "cherry"};
+  auto distinct_vec = vec | distinct();
+  EXPECT_EQ(distinct_vec, std::vector<std::string>({"apple", "banana", "cherry"}));
+}
+
+TEST(DistinctTest, EmptyVector) {
+  std::vector<int> vec = {};
+  auto distinct_vec = vec | distinct();
+  EXPECT_TRUE(distinct_vec.empty());
+}
+
+TEST(AdapterChainTest, SortAndDistinct) {
+  std::vector<int> vec = {3, 1, 4, 1, 5, 9, 3};
+  auto result = vec | sort(std::less<int>()) | distinct();
+  EXPECT_EQ(result, std::vector<int>({1, 3, 4, 5, 9}));
+}
+
+TEST(AdapterChainTest, DistinctAndSortDesc) {
+  std::vector<double> vec = {2.3, 1.5, 2.3, 3.6, 1.2};
+  auto result = vec | distinct() | sort(std::greater<double>());
+  EXPECT_EQ(result, std::vector<double>({3.6, 2.3, 1.5, 1.2}));
+}
+
+TEST(AdapterChainTest, MinElementInDistinct) {
+  std::vector<std::string> vec = {"apple", "banana", "apple", "cherry"};
+  auto result = vec | distinct() | min_element(std::less<std::string>());
+  EXPECT_EQ(result, "apple");
+}
+
+TEST(AdapterChainTest, SortDistinctMinElement) {
+  std::vector<int> vec = {7, 3, 5, 3, 7, 9, 2};
+  auto result = vec | sort(std::less<int>()) | distinct() | min_element(std::less<int>());
+  EXPECT_EQ(result, 2);
+}
+
+TEST(FirstTest, IntVector) {
+  std::vector<int> vec = {3, 1, 4, 1, 5, 9};
+  auto first_val = vec | first();
+  EXPECT_EQ(first_val, 3);
+}
+
+TEST(FirstTest, DoubleVector) {
+  std::vector<double> vec = {2.3, 1.5, 3.6, 1.2};
+  auto first_val = vec | first();
+  EXPECT_DOUBLE_EQ(first_val, 2.3);
+}
+
+TEST(FirstTest, StringVector) {
+  std::vector<std::string> vec = {"apple", "banana", "cherry"};
+  auto first_val = vec | first();
+  EXPECT_EQ(first_val, "apple");
+}
+
+TEST(FirstTest, EmptyVector) {
+  std::vector<int> vec;
+  EXPECT_THROW(vec | first(), std::out_of_range);
+}
+
+TEST(LastTest, IntVector) {
+  std::vector<int> vec = {3, 1, 4, 1, 5, 9};
+  auto last_val = vec | last();
+  EXPECT_EQ(last_val, 9);
+}
+
+TEST(LastTest, DoubleVector) {
+  std::vector<double> vec = {2.3, 1.5, 3.6, 1.2};
+  auto last_val = vec | last();
+  EXPECT_DOUBLE_EQ(last_val, 1.2);
+}
+
+TEST(LastTest, StringVector) {
+  std::vector<std::string> vec = {"apple", "banana", "cherry"};
+  auto last_val = vec | last();
+  EXPECT_EQ(last_val, "cherry");
+}
+
+TEST(LastTest, EmptyVector) {
+  std::vector<int> vec;
+  EXPECT_THROW(vec | last(), std::out_of_range);
+}
+
+TEST(AdapterChainTest, FirstAfterSortDistinct) {
+  std::vector<int> vec = {3, 1, 4, 1, 5, 9, 3};
+  auto result = vec | sort(std::less<int>()) | distinct() | first();
+  EXPECT_EQ(result, 1);
+}
+
+TEST(AdapterChainTest, LastAfterDistinctSort) {
+  std::vector<double> vec = {2.3, 1.5, 2.3, 3.6, 1.2};
+  auto result = vec | distinct() | sort(std::greater<double>()) | last();
+  EXPECT_EQ(result, 1.2);
+}
+
+TEST(AdapterChainTest, FirstElementStringVector) {
+  std::vector<std::string> vec = {"apple", "banana", "apple", "cherry"};
+  auto result = vec | distinct() | first();
+  EXPECT_EQ(result, "apple");
+}
+
+TEST(AdapterChainTest, LastElementStringVector) {
+  std::vector<std::string> vec = {"apple", "banana", "cherry", "banana"};
+  auto result = vec | distinct() | last();
+  EXPECT_EQ(result, "cherry");
+}
+
+TEST(IntersectTest, IntVector) {
+  std::vector<int> vec1 = {1, 2, 3, 4};
+  std::vector<int> vec2 = {3, 4, 5, 6};
+  auto result = std::vector<int>() | intersect(vec1, vec2);
+  EXPECT_EQ(result, std::vector<int>({4, 3}));
+}
+
+TEST(IntersectTest, DoubleVector) {
+  std::vector<double> vec1 = {1.1, 2.2, 3.3, 4.4};
+  std::vector<double> vec2 = {3.3, 4.4, 5.5, 6.6};
+  auto result = std::vector<double>() | intersect(vec1, vec2);
+  EXPECT_EQ(result, std::vector<double>({4.4, 3.3}));
+}
+
+TEST(IntersectTest, StringVector) {
+  std::vector<std::string> vec1 = {"apple", "banana", "cherry"};
+  std::vector<std::string> vec2 = {"banana", "cherry", "date"};
+  auto result = std::vector<std::string>() | intersect(vec1, vec2);
+  EXPECT_EQ(result, std::vector<std::string>({"cherry", "banana"}));
+}
+
+TEST(IntersectTest, NoIntersection) {
+  std::vector<int> vec1 = {1, 2, 3};
+  std::vector<int> vec2 = {4, 5, 6};
+  auto result = std::vector<int>() | intersect(vec1, vec2);
+  EXPECT_TRUE(result.empty());
+}
+
+TEST(IntersectTest, EmptyVector) {
+  std::vector<int> vec1 = {1, 2, 3};
+  std::vector<int> vec2 = {};
+  auto result = std::vector<int>() | intersect(vec1, vec2);
+  EXPECT_TRUE(result.empty());
 }
